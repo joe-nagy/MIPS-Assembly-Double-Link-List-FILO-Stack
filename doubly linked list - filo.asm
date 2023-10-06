@@ -24,8 +24,6 @@ user_message1: .asciiz "\nCurrent list: "
 user_message2: .asciiz "\nWe popped the following item from the end of the list: "
 user_message3: .asciiz "\nList is empty, there is nothing to pop / delete. We are going back to menu:"
 user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
-user_prompt3: .asciiz "\nWhich 2 elements do you want to swap? Enter first element:\n"
-user_prompt4: .asciiz "\nEnter second element:\n"
 
 
 .macro PRINT_STRING(%x)
