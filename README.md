@@ -3,5 +3,6 @@ This MIPS assembly code showcases a stack implementation, allowing users to push
 Certainly:
 
 This MIPS assembly code demonstrates the implementation of a stack data structure, where elements are added to and removed from one end, adhering to the Last-In, First-Out (LIFO) principle. 
-It provides user-friendly functionalities such as pushing new elements onto the stack and popping the last element off. 
+It is written in MARS MIPS Simulator. 
+The code provides interactive functionalities such as pushing new elements onto the stack and popping the last element off. 
 The code utilizes macros to enhance readability and offers a menu-driven interface for interacting with the stack, making it a practical illustration of stack operations.
