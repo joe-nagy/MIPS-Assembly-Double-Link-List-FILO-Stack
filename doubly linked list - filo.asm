@@ -42,7 +42,7 @@ user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
    	syscall
    	move $t8, $v0				# we store user choice in $t8
    	beq $t8, 1, LIST_ADD_NODE		# If user_menu_choice == 1 -> LIST_ADD_NODE
-   	beq $t8, 2, LIST_POP			# If user_menu_choice == 1 -> LIST_ADD_NODE
+   	beq $t8, 2, LIST_POP			# If user_menu_choice == 2 -> LIST_POP
    	beq $t8, -1, EXIT			# If user_menu_choice == -1 1 -> EXIT
    	
 .end_macro 
