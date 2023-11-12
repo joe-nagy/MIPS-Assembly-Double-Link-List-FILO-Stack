@@ -1,9 +1,14 @@
+#############################
+# CODE BY JOZSEF NAGY, Nov 12th 2023
+#############################
+
+
 # $s0 = Address of current node
 # $s1 = Used for node creation
 # $s2 = Removing user entered \n / deleting node
-# $s3 = UNUSED
-# $s4 = UNUSED
-# $s5 = UNUSED
+# $s3 = loop counter for zeroing out elements
+# $s4 = use to store zero string
+# $s5 = loop counter in zeroing out datafields
 # $s6 = UNUSED
 # $s7 = Head node's address (STATIC))
 # $t0 = Address of previous node
@@ -11,7 +16,7 @@
 # $t2 = Register used for printing / traversing
 # $t3 = Register used for printing/ message printing
 # $t4 = Loop counter
-# $t5 = UNUSED
+# $t5 = used for zeroing out elements, it stores datafield address
 # $t6 = UNUSED
 # $t7 = UNUSED
 # $t8 = User menu choice
@@ -19,10 +24,12 @@
 
 .data
 space: .asciiz ", "			# space for between list elements
-prompt_menu: .asciiz "\n\nWhat do you want to do?\n\nI.   Push (Insert New Node to the end of list) = 1\nII.  Pop (Remove Last Node in list) = 2\nIII. Exit = -1\n"
+prompt_menu: .asciiz "\n\nWhat do you want to do?\n\nI.     Push (Insert New Node to the end of list) = 1\nII.    Pop (Remove Last Node in list) = 2\nIII.   Zero out all elements = 3\nIV.    Exit = -1\n"
 user_message1: .asciiz "\nCurrent list: "
 user_message2: .asciiz "\nWe popped the following item from the end of the list: "
 user_message3: .asciiz "\nList is empty, there is nothing to pop / delete. We are going back to menu:"
+user_message4: .asciiz "\nList is empty, there is nothing zero out. We are going back to menu:"
+user_message5: .asciiz "\nWe set all element to be 0 in our list.\n"
 user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
 
 
@@ -43,7 +50,8 @@ user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
    	move $t8, $v0				# we store user choice in $t8
    	beq $t8, 1, LIST_ADD_NODE		# If user_menu_choice == 1 -> LIST_ADD_NODE
    	beq $t8, 2, LIST_POP			# If user_menu_choice == 2 -> LIST_POP
-   	beq $t8, -1, EXIT			# If user_menu_choice == -1 1 -> EXIT
+   	beq $t8, 3, LIST_CLEAR_ELEMENTS		# If user_menu_choice == 3 -> LIST_CLEAR_ELEMENTS
+   	beq $t8, -1, EXIT			# If user_menu_choice == -1 -> EXIT
    	
 .end_macro 
 
@@ -85,7 +93,9 @@ user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
 	MENU()
 	
 	LIST_NOT_EMPTY:
+	FIND_TAIL_NODE()			# t1 has the address of tail node
 	ENTER_NODE_VALUE()
+	move $t0, $t1				# t0 = t1
 	sw $t0, 0($s0)				# we store previous node pointer in current node
 	sw $s0, 20($t0)				# we store current node's pointer in previous node	
 
@@ -132,19 +142,13 @@ user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
 	subi $t4, $t4, 1			# decreement loop counter
 	bgtz $t4, node_delete_loop		# if loop counter > 0, we repeat loop
 	subi $t9, $t9, 1			# we substract one from list size
-
 .end_macro
 
 .macro LIST_POP()
 	beqz $t9, empty_list			# if list is empty there is nothing to delete
-    	move $t1, $s7				# Initialize t1 with head node's address
-	list_traverse:				# we are looking for the tail node
-	 	lw $t2, 20($t1)			# Load address of the next node into t1
-	 	add $t1, $t1, 24		# moveing to next node
-		bgtz $t2, list_traverse		# if next node's address > 0 -> not tail node, move to next node
+	FIND_TAIL_NODE()			# t1 has the address of tail node
 	la $t3, user_message2			# we load user message2
 	PRINT_STRING($t3)			# we print user message2
-	sub $t1, $t1, 24			# we are returning to the beginning of tail node
 	la $t3, 4($t1)				# we load up string that we are about to delete for printing
 	PRINT_STRING($t3)			# we print the string we are about to delete
 	lw $t1, 0($t1)				# we return to previous node
@@ -161,11 +165,44 @@ user_prompt1: .asciiz "\nEnter a string no more than 16 characters: \n"
 	la $t3, user_message3			# we load user message3
 	PRINT_STRING($t3)			# we print user message3
 	node_pop_finish:
+	li $t1, 0				# we reset t1 register.
 	
 .end_macro
 
-.text 	
+.macro LIST_CLEAR_ELEMENTS()
+	beqz $t9, empty_list			# if list is empty there is nothing to zero out 
+    	move $t1, $s7				# Initialize t1 with head node's address
+    	move $t5, $s7				# initalize t5 with head node's address
+    	move $s3, $t9				# we make $s3 equal to $t9, which is the size of the list
+    	li $s4, 48				# 0 = 48 ascii code (because we use strings)
+    	list_clear_elements_loop:
+	jal LIST_CLEAR_NODE_DATA
+	lw $t1, 4($t5)				# Load address of the next node into t1
+	move $t5, $t1				# t5 = t1
+	bnez  $t1, list_clear_elements_loop	# if next address != nullptr, we havent reached tail node yet
+	j list_clear_elements_finish		# we finished zeroing out elements
+	
+	empty_list:				# this code to execute if list size == 0
+	la $t3, user_message4			# we load user message4
+	PRINT_STRING($t3)			# we print user message4
+	list_clear_elements_finish:
+	li $s5, 0				# we reset t5 register.
+	li $t1, 0				# we reset t1 register.
 
+.end_macro
+
+.macro FIND_TAIL_NODE()				# it returns t1 with head node's address
+    	move $t1, $s7				# Initialize t1 with head node's address
+    	beq $t9, 1, found_tail_node		# if list size == 1, head node = tail node
+	list_traverse:				# we are looking for the tail node
+	lw $t2, 20($t1)				# Load address of the next node into t2
+	beqz $t2, found_tail_node
+	move $t1, $t2				# we set t1 equal to next node's address
+	j list_traverse				# if next node's address > 0 -> not tail node, move to next node
+	found_tail_node:
+.end_macro
+	
+.text 	
 MENU:
 	MENU()
 LIST_ADD_NODE:
@@ -175,11 +212,34 @@ LIST_POP:
 	beqz $t9, MENU				# if list is empty we are returning to menu	
 	LIST_PRINT()
 	MENU()
+LIST_CLEAR_ELEMENTS:
+	LIST_CLEAR_ELEMENTS()
+	beqz $t9, MENU				# if list is empty we are returning to menu	
+	LIST_PRINT()
+	MENU()
 EXIT:
 	EXIT()
+	
+LIST_CLEAR_NODE_DATA:
+	subi $sp, $sp, 4			# save space on the stack
+ 	sw $ra, 0($sp)				# save the return address
+	addi $t5, $t5, 4			# we access datafield of node
+	sw $s4, 0($t5)				# we store 0 in ascii code in the data field
+	addi $s5, $s5, 3			# we set up loop counter to zero out the rest of the datafields
+	zero_out_loop:
+	addi $t5, $t5, 4			# we increament node address, to access the rest of the data fields
+	sw $zero, 0($t5)			# we store zero in data fields
+	subi $s5, $s5, 1			# we substract 1 from loop counter (we have 4 fields total, 1st field contains 48 (zero ascii), rest will be zero)
+	bnez $s5, zero_out_loop			# we iteraite 3 times
+	lw $ra, 0($sp)				# restore the return address
+	addi $sp, $sp, 4			# restore the stack pointer
+	jr $ra	
 
 
 	
+
+
+
 
 
 
